@@ -1,0 +1,24 @@
+# Dependencias
+node_modules/
+
+# Credenciais (NUNCA subir para o GitHub)
+.env
+.env.*
+*.env
+!.env.example
+
+# Vercel
+.vercel/
+
+# Logs e arquivos do sistema
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Cobertura de testes
+coverage/
