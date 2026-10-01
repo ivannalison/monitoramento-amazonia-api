@@ -5,8 +5,8 @@ API REST que **organiza e padroniza indicadores ambientais da região amazônica
 monitoramento e relatórios. Alinhada ao **ODS 11 (Cidades e Comunidades Sustentáveis)**.
 Desenvolvida em **Node.js** com **Express** e **MongoDB Atlas**.
 
-- 🌐 **API em produção:** https://SEU-PROJETO.vercel.app/api/status
-- 📘 **Documentação interativa (Swagger):** https://SEU-PROJETO.vercel.app/api/docs
+- 🌐 **API em produção:** https://monitoramento-amazonia-api.vercel.app/api/status
+- 📘 **Documentação interativa (Swagger):** https://monitoramento-amazonia-api.vercel.app/api/docs
 - 💻 **Repositório:** https://github.com/ivannalison/monitoramento-amazonia-api
 
 > **Sobre os dados:** nesta versão os dados são **demonstrativos**. Todas as respostas trazem o
