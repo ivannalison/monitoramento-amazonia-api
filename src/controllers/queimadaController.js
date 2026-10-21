@@ -1,4 +1,4 @@
-// src/controllers/queimadaController.js
+// src/controllers/queimadaController.js  (ARQUIVO 8 - acrescentado: geojson)
 const service = require('../services/queimadaService');
 const asyncHandler = require('../utils/asyncHandler');
 const { fonteDe, ultimaAtualizacaoDe } = require('../utils/resposta');
@@ -21,4 +21,15 @@ exports.estatisticas = asyncHandler(async (req, res) => {
   const r = await service.estatisticas(req.query);
   if (r.erro) return res.status(400).json({ erro: r.erro });
   res.json(r);
+});
+
+// NOVO: GET /api/queimadas/geojson
+exports.geojson = asyncHandler(async (req, res) => {
+  const r = await service.listarGeojson(req.query);
+  res.json({
+    ...r.geojson,
+    fonte: fonteDe(r.focos),
+    ultima_atualizacao: ultimaAtualizacaoDe(r.focos),
+    total: r.focos.length,
+  });
 });

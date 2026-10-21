@@ -6,7 +6,7 @@ const q = (name, description, extra = {}) => ({
 });
 
 const P = {
-  estado: q('estado', 'Ex.: Amazonas'),
+  estado: q('estado', 'Sigla ou nome. Ex.: AM ou Amazonas'),
   municipio: q('municipio', 'Ex.: Lábrea'),
   inicio: q('inicio', 'Data inicial (AAAA-MM-DD)', { format: 'date' }),
   fim: q('fim', 'Data final (AAAA-MM-DD)', { format: 'date' }),
@@ -55,7 +55,7 @@ module.exports = {
     title: 'Monitoramento da Amazônia API',
     version: '2.0.0',
     description:
-      'API REST que organiza indicadores ambientais da Amazônia. Os dados atuais são demonstrativos (veja o campo "fonte"). ' +
+      'API REST que organiza indicadores ambientais da Amazônia. Todos os dados v\u00eam de fontes p\u00fablicas reais: NASA FIRMS (queimadas), INPE DETER (desmatamento) e Open-Meteo (ar, chuva, cheias e clima). Veja o campo "fonte" de cada resposta. ' +
       'Rotas que alteram dados (POST/PUT/DELETE) usam o header x-api-key quando API_KEY está configurada.',
   },
   servers: [{ url: '/' }],
@@ -77,6 +77,21 @@ module.exports = {
 
     '/api/clima': get('Clima', 'Condições climáticas', [P.estado]),
 
+    '/api/queimadas/geojson': get('Queimadas', 'Focos em GeoJSON para o mapa (m\u00e1ximo 5.000 pontos)', [q('satelite', 'modis, noaa20 ou suomi'), q('horas', 'Janela em horas (1 a 168, padr\u00e3o 24)'), P.estado]),
+    '/api/qualidade-ar/geojson': get('Camadas', 'Qualidade do ar e fuma\u00e7a (GeoJSON, leitura mais recente de cada ponto)', [P.estado]),
+    '/api/chuvas/geojson': get('Camadas', 'Chuva por hora (GeoJSON)', [q('hora', 'Hora da previs\u00e3o, ex.: 2026-10-20T15:00'), P.estado]),
+    '/api/cheias/geojson': get('Camadas', 'Risco de cheia pela vaz\u00e3o dos rios (GeoJSON)', [q('nivel', 'normal, atencao, alto ou extremo (padr\u00e3o: acima do normal)'), P.estado]),
+    '/api/fontes': get('Camadas', 'Fontes de dados, \u00faltima coleta e situa\u00e7\u00e3o'),
+    '/api/camadas/resumo': get('Camadas', 'Resumo de queimadas, ar, chuva e cheias', [P.estado, q('horas', 'Janela das queimadas em horas (1 a 168, padr\u00e3o 24)')]),
+    '/api/coleta/{fonte}': {
+      post: {
+        tags: ['Coleta'],
+        summary: 'Dispara a coleta de uma fonte (usada pelo agendador e pelo Cloud Scheduler)',
+        security: seguro,
+        parameters: [{ name: 'fonte', in: 'path', required: true, schema: { type: 'string', enum: ['firms', 'ar', 'chuva', 'cheia', 'desmatamento', 'clima', 'todas'] }, description: 'Fonte a coletar' }],
+        responses: { 200: { description: 'Coleta executada' }, ...errosEscrita, 404: { description: 'Fonte desconhecida' } },
+      },
+    },
     '/api/alertas': {
       ...get('Alertas', 'Lista alertas ambientais', [
         q('tipo', 'Ex.: chuva, seca, cheia, queimada'),

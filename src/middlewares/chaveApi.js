@@ -1,7 +1,6 @@
 // [41] src/middlewares/chaveApi.js
 // Protege as rotas que ALTERAM dados (POST/PUT/DELETE) com uma chave no header "x-api-key".
 // - Local, sem API_KEY no .env: liberado (facilita o desenvolvimento).
-// - Em produção (Vercel), sem API_KEY configurada: escrita bloqueada por segurança.
 // - Com API_KEY definida: exige o header correto.
 
 module.exports = function exigirChave(req, res, next) {

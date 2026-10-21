@@ -1,0 +1,23 @@
+# ARQUIVO 31 → docker-compose.yml
+# Sobe a API em container. O MongoDB continua no Atlas (nao ha container de banco).
+# Uso: docker compose up --build      Parar: docker compose down
+# Porta no seu PC: 3000 (mude com a variavel HOST_PORT)
+services:
+  api:
+    build: .
+    container_name: guarda-api
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      # a coleta automatica no Google sera feita pelo Cloud Scheduler.
+      # Para agendar dentro do container, troque por "true" (e nao rode a API local junto).
+      AGENDAR: "false"
+    ports:
+      - "${HOST_PORT:-3000}:3000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

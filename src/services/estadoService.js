@@ -1,9 +1,10 @@
-// [35] src/services/estadoService.js
-// Junta os estados que aparecem nas 4 coleções (para o menu de filtro do site).
+// src/services/estadoService.js
+// Junta os estados das 4 colecoes (menu de filtro do site), sempre como sigla.
 const Queimada = require('../models/Queimada');
 const Desmatamento = require('../models/Desmatamento');
 const Clima = require('../models/Clima');
 const Alerta = require('../models/Alerta');
+const { normalizarUF } = require('../utils/estados');
 
 async function listar() {
   const listas = await Promise.all([
@@ -12,7 +13,7 @@ async function listar() {
     Clima.distinct('estado'),
     Alerta.distinct('estado'),
   ]);
-  const unicos = [...new Set(listas.flat().filter(Boolean))];
+  const unicos = [...new Set(listas.flat().filter(Boolean).map(normalizarUF))];
   return unicos.sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 

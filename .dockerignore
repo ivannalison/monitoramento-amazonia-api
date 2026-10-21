@@ -1,0 +1,10 @@
+# ARQUIVO 30 → .dockerignore  (o que NAO entra na imagem)
+node_modules
+.env
+.git
+.gitignore
+scripts
+Dockerfile
+docker-compose.yml
+*.md
+npm-debug.log

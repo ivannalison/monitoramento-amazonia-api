@@ -1,33 +1,56 @@
-// [46] src/config/database.js
-// Conexão com o MongoDB Atlas via Mongoose.
-// As credenciais NÃO ficam aqui: ficam no .env (local) ou nas variáveis da Vercel (MONGODB_URI).
-// Reaproveita a conexão já aberta (importante na Vercel, onde cada requisição pode chamar esta função).
-
 const mongoose = require('mongoose');
+try { require('dotenv').config(); } catch (e) { /* dotenv opcional */ }
 
-let tentativa = null;
+let aguardando = false;
 
-async function conectarBanco() {
-  if (mongoose.connection.readyState === 1) return true;
+function opcoes() {
+  return { serverSelectionTimeoutMS: 10000 };
+}
 
-  const uri = process.env.MONGODB_URI;
-  if (!uri) {
-    console.warn('MONGODB_URI não definida. API rodando sem banco.');
+async function tentar() {
+  await mongoose.connect(process.env.MONGODB_URI, opcoes());
+  console.log('[banco] conectado ao MongoDB Atlas');
+}
+
+function agendarNovaTentativa(n) {
+  if (aguardando) return;
+  aguardando = true;
+  const espera = Math.min(5000 * n, 60000);
+  console.log('[banco] nova tentativa em ' + espera / 1000 + 's (tentativa ' + n + ')');
+  setTimeout(async () => {
+    aguardando = false;
+    try {
+      await tentar();
+    } catch (e) {
+      console.error('[banco] falha ao conectar: ' + e.message);
+      agendarNovaTentativa(n + 1);
+    }
+  }, espera);
+}
+
+// Nunca derruba o processo: se a 1a conexao falhar, a API sobe e continua tentando.
+async function conectar() {
+  if (!process.env.MONGODB_URI) {
+    console.error('[banco] MONGODB_URI nao definida');
     return false;
   }
-
+  if (mongoose.connection.readyState === 1) return true;
   try {
-    if (!tentativa) {
-      tentativa = mongoose.connect(uri, { serverSelectionTimeoutMS: 8000 });
-    }
-    await tentativa;
-    console.log('MongoDB conectado');
+    await tentar();
     return true;
-  } catch (erro) {
-    tentativa = null; // permite tentar de novo na próxima chamada
-    console.error('Falha ao conectar no MongoDB:', erro.message);
+  } catch (e) {
+    console.error('[banco] falha ao conectar: ' + e.message);
+    agendarNovaTentativa(1);
     return false;
   }
 }
 
-module.exports = { conectarBanco };
+mongoose.connection.on('disconnected', () => console.warn('[banco] desconectado (o driver tenta reconectar sozinho)'));
+mongoose.connection.on('reconnected', () => console.log('[banco] reconectado'));
+
+module.exports = conectar;
+module.exports.conectar = conectar;
+module.exports.conectarBanco = conectar;
+module.exports.connectDB = conectar;
+module.exports.connectDb = conectar;
+module.exports.default = conectar;

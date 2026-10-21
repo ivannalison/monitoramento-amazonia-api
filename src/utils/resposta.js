@@ -3,7 +3,7 @@
 
 function fonteDe(docs) {
   const fontes = [...new Set(docs.map((d) => d.fonte).filter(Boolean))];
-  return fontes.length ? fontes.join(', ') : 'Dados demonstrativos';
+  return fontes.length ? fontes.join(', ') : 'Sem registros';
 }
 
 function ultimaAtualizacaoDe(docs) {

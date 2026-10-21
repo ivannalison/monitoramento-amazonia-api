@@ -1,6 +1,7 @@
 // [39] src/services/alertaService.js
 const Alerta = require('../models/Alerta');
 const { montarFiltro } = require('../utils/filtros');
+const { normalizarUF } = require('../utils/estados');
 
 // Só estes campos podem ser gravados pelo cliente (evita gravar campos indevidos).
 const CAMPOS = ['tipo', 'nivel', 'descricao', 'estado', 'ativo', 'fonte'];
@@ -8,7 +9,7 @@ const CAMPOS = ['tipo', 'nivel', 'descricao', 'estado', 'ativo', 'fonte'];
 function extrair(body) {
   const dados = {};
   for (const campo of CAMPOS) {
-    if (body && body[campo] !== undefined) dados[campo] = body[campo];
+    if (body && body[campo] !== undefined) dados[campo] = campo === 'estado' ? normalizarUF(body[campo]) : body[campo];
   }
   return dados;
 }

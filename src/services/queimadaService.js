@@ -1,7 +1,8 @@
-// src/services/queimadaService.js
+// src/services/queimadaService.js  (ARQUIVO 7 - acrescentado: listarGeojson)
 const Queimada = require('../models/Queimada');
 const { montarFiltro } = require('../utils/filtros');
 const { filtroComPeriodo, paginacao } = require('../utils/periodo');
+const { paraUF } = require('../utils/estados');
 
 // Função original (mantida): lista tudo, com filtros por estado e município.
 async function listar(query) {
@@ -55,4 +56,30 @@ async function estatisticas(query) {
   };
 }
 
-module.exports = { listar, listarPaginado, estatisticas };
+// NOVO: focos em GeoJSON para o mapa (máx. 5.000 pontos, os mais intensos primeiro)
+// ?satelite=modis|noaa20|suomi  &horas=24 (1 a 168)  &estado=AM
+async function listarGeojson(query) {
+  const horas = Math.min(Math.max(parseInt(query.horas, 10) || 24, 1), 168);
+  const filtro = { satelite: { $exists: true }, data: { $gte: new Date(Date.now() - horas * 3600 * 1000) } };
+  if (['modis', 'noaa20', 'suomi'].includes(query.satelite)) filtro.satelite = query.satelite;
+  const uf = paraUF(query.estado);
+  if (uf) filtro.estado = uf;
+
+  const focos = await Queimada.find(filtro).sort({ intensidade: -1 }).limit(5000).lean();
+  return {
+    focos,
+    geojson: {
+      type: 'FeatureCollection',
+      features: focos.map((f) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [f.longitude, f.latitude] },
+        properties: {
+          data: f.data, hora: f.hora, satelite: f.satelite, intensidade: f.intensidade,
+          confianca: f.confianca, estado: f.estado, municipio: f.municipio || null, fonte: f.fonte,
+        },
+      })),
+    },
+  };
+}
+
+module.exports = { listar, listarPaginado, estatisticas, listarGeojson };
