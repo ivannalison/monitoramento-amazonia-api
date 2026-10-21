@@ -313,5 +313,5 @@ Dockerfile, docker-compose.yml, .dockerignore
 **Ivan Nalison Cassimiro Xavier**
 
 - GitHub: [ivannalison](https://github.com/ivannalison)
-- LinkedIn: Ivan Nalison
+- LinkedIn: [Ivan Nalison](https://www.linkedin.com/in/ivan-nalison/)
 - E-mail: nalison.cn@gmail.com  
