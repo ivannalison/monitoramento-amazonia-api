@@ -13,7 +13,7 @@ A API está pronta e publicada no GitHub, com a Fase 1 (gzip, cache, `bbox`, mun
 |---|---|---|
 | `9752fd3` | 21/10/2026 | API com dados reais, camadas GeoJSON, Docker, reconexão ao Atlas e testes |
 | `3142d22` | 27/10/2026 | Fase 1: gzip, cache, `bbox`, município nas queimadas, Maranhão, CORS só leitura, `TRUST_PROXY`, docs v3 e escopo do front |
-| commit da Fase 1.5 | 27/10/2026 | Fase 1.5 e este relatório |
+| `7a81eab` | 27/10/2026 | Fase 1.5 e este relatório |
 
 ## 3. O que a API faz
 
@@ -60,7 +60,12 @@ Os testes usam o banco real (`MONGODB_URI` no `.env`). Arquivos: `tests/api.test
 - `total_focos=2587 | nao_processados=0 | fora_dos_municipios=10`
 - `ultimas_24h=0 | ultimas_24h_nao_processados=0 | ultima_gravacao=2026-10-21T18:42:12.307Z`
 
-Como ler: `ultimas_24h_nao_processados = 0` significa que os focos novos já chegam com município (coletor novo funcionando). Se for maior que 0, rodar `node scripts/preencher-municipios.js` e conferir de novo depois da próxima coleta do FIRMS. `fora_dos_municipios` são focos que não caíram em nenhum município da malha (divisas simplificadas).
+Como ler: so vale se `ultimas_24h` for maior que 0 (com 0 focos novos, `ultimas_24h_nao_processados = 0` nao prova nada); com focos novos, `ultimas_24h_nao_processados = 0` significa que os focos novos já chegam com município (coletor novo funcionando). Se for maior que 0, rodar `node scripts/preencher-municipios.js` e conferir de novo depois da próxima coleta do FIRMS. `fora_dos_municipios` são focos que não caíram em nenhum município da malha (divisas simplificadas).
+
+Conferência depois de uma coleta manual do FIRMS (27/10/2026 15:49):
+
+- `total_focos=13847 | nao_processados=0 | fora_dos_municipios=10`
+- `ultimas_24h=3730 | ultimas_24h_nao_processados=0 | ultima_gravacao=2026-10-27T19:48:55.105Z`
 
 ## 8. Decisões fechadas
 
