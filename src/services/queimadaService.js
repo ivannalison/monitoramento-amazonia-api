@@ -14,7 +14,7 @@ async function listar(query) {
 const arredondar = (n) => (n == null ? null : Math.round(n * 100) / 100);
 
 async function listarPaginado(query) {
-  const { filtro, erro } = filtroComPeriodo(query, ['estado', 'municipio']);
+  const { filtro, erro } = filtroComPeriodo(query, ['estado', 'municipio', 'municipio_codigo']);
   if (erro) return { erro };
   const { pagina, limite, pular } = paginacao(query);
   const [focos, total] = await Promise.all([
@@ -25,7 +25,7 @@ async function listarPaginado(query) {
 }
 
 async function estatisticas(query) {
-  const { filtro, erro } = filtroComPeriodo(query, ['estado', 'municipio']);
+  const { filtro, erro } = filtroComPeriodo(query, ['estado', 'municipio', 'municipio_codigo']);
   if (erro) return { erro };
   const [porEstado, porDia] = await Promise.all([
     Queimada.aggregate([
@@ -70,7 +70,7 @@ async function listarGeojson(query) {
   if (['modis', 'noaa20', 'suomi'].includes(query.satelite)) filtro.satelite = query.satelite;
   const uf = paraUF(query.estado);
   if (uf) filtro.estado = uf;
-  Object.assign(filtro, montarFiltro(query, ['municipio']));
+  Object.assign(filtro, montarFiltro(query, ['municipio', 'municipio_codigo']));
   if (bbox) {
     filtro.longitude = { $gte: bbox[0], $lte: bbox[2] };
     filtro.latitude = { $gte: bbox[1], $lte: bbox[3] };

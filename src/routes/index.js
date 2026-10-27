@@ -12,6 +12,7 @@ const alertas = require('../controllers/alertaController');
 const coleta = require('../controllers/coletaController');
 const camadas = require('../controllers/camadasController');
 const resumoCamadas = require('../controllers/resumoCamadasController');
+const municipios = require('../controllers/municipioController');
 
 const cache = require('../middlewares/cacheMemoria');
 const router = Router();
@@ -26,8 +27,14 @@ router.get('/relatorio', relatorio.obter);                     // ?estado= &inic
 router.get('/queimadas/geojson', queimadas.geojson);           // ?satelite= &horas= &estado=
 router.get('/queimadas/estatisticas', queimadas.estatisticas);
 router.get('/queimadas', queimadas.listar);                    // ?estado= &municipio= &inicio= &fim= &pagina= &limite=
+router.get('/desmatamento/geojson', desmatamento.geojson);        // ?bbox= &estado= &municipio= &inicio= &fim= &limite=
 router.get('/desmatamento/estatisticas', desmatamento.estatisticas);
 router.get('/desmatamento', desmatamento.listar);              // idem
+
+router.get('/municipios/geojson', municipios.geojson);         // ?estado= &codigo= &bbox=
+router.get('/municipios/:codigo', municipios.obter);
+router.get('/municipios', municipios.listar);                  // ?estado= &busca= &limite=
+router.get('/contornos/estados', municipios.contornosEstados);
 
 router.get('/clima', clima.listar);                            // ?estado=
 

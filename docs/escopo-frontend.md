@@ -69,20 +69,23 @@ Compartilhados: carregando, erro, aviso de dado defasado, modal e logo.
 - Com um município escolhido, usar `?municipio=Nome` (nome exatamente como a API devolve, com acento).
 - `limite` padrão 5000, máximo 10000. Usar `limite` menor no celular.
 - Ar, chuva e cheias têm cerca de 180 pontos: carregar inteiras, sem `bbox`.
+- Camada DETER: `GET /api/desmatamento/geojson?bbox=...` (pontos no centro de cada alerta), com os mesmos `limite` e `truncado`.
+- Contornos: `GET /api/contornos/estados` (estados, Maranhão inteiro) e `GET /api/municipios/geojson?estado=XX` ou `?codigo=...` (municípios). Sem filtro, o GeoJSON de todos os municípios pesa cerca de 1 MB antes do gzip: carregar uma vez e guardar.
+- Busca de município: `GET /api/municipios?busca=...`; ao escolher, usar o `bbox` para enquadrar o mapa e o `codigo` em `?municipio_codigo=` (queimadas).
 - Agrupar pontos (cluster) em zoom aberto e mostrar pontos individuais ao aproximar.
 
 ## 7. Atualização a cada 5 minutos
 
 O site consulta `/api/fontes` (rota leve) a cada 5 minutos e só baixa de novo a camada cuja última coleta mudou. Assim fica atual sem gastar o limite de requisições. Os dados em si mudam a cada 30 min (FIRMS), 3 h (ar, chuva e cheia) ou 6 h (clima e desmatamento). Se uma fonte estiver em erro ou antiga, mostrar aviso de dado defasado.
 
-## 8. O que a API ainda não tem e o front vai precisar (Fase 1.5)
+## 8. O que a API ganhou na Fase 1.5 (pronto para o front)
 
-| Necessidade | Proposta |
+| Necessidade | Rota pronta |
 |---|---|
-| Busca de município que centraliza o mapa | `GET /api/municipios` com código, nome, estado e centro |
-| Contornos de estados e municípios | Servir os contornos (ou copiá-los como arquivos estáticos do front) |
-| Camada de desmatamento por área visível | `bbox` em `/api/desmatamento` |
-| Filtro de município sem acento | Filtro por código IBGE (`?municipio_codigo=`) ou comparação sem acento |
+| Busca de município que centraliza o mapa | `GET /api/municipios?busca=...` (código, nome, estado, centro e bbox) e `GET /api/municipios/:codigo` |
+| Contornos de estados e municípios | `GET /api/contornos/estados` e `GET /api/municipios/geojson` (`estado`, `codigo`, `bbox`) |
+| Camada de desmatamento por área visível | `GET /api/desmatamento/geojson?bbox=...` (e `bbox` em `/api/desmatamento`) |
+| Filtro de município sem acento ou por código | `?municipio=labrea` ignora acento; `?municipio_codigo=` nas queimadas |
 
 ## 9. Limitações a mostrar no site
 

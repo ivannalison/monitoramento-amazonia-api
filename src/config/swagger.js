@@ -7,6 +7,8 @@ const q = (name, description, extra = {}) => ({
 
 const P = {
   estado: q('estado', 'Sigla ou nome. Ex.: AM ou Amazonas'),
+  municipio_codigo: q('municipio_codigo', 'Código IBGE do município (7 dígitos). Só vale nas queimadas'),
+  bbox: q('bbox', 'Área visível do mapa: minLon,minLat,maxLon,maxLat (ex.: -70,-10,-60,0)'),
   municipio: q('municipio', 'Ex.: Lábrea'),
   inicio: q('inicio', 'Data inicial (AAAA-MM-DD)', { format: 'date' }),
   fim: q('fim', 'Data final (AAAA-MM-DD)', { format: 'date' }),
@@ -53,7 +55,7 @@ module.exports = {
   openapi: '3.0.0',
   info: {
     title: 'Monitoramento da Amazônia API',
-    version: '2.1.0',
+    version: '2.2.0',
     description:
       'API REST que organiza indicadores ambientais da Amazônia. Todos os dados v\u00eam de fontes p\u00fablicas reais: NASA FIRMS (queimadas), INPE DETER (desmatamento) e Open-Meteo (ar, chuva, cheias e clima). Veja o campo "fonte" de cada resposta. ' +
       'Rotas que alteram dados (POST/PUT/DELETE) usam o header x-api-key quando API_KEY está configurada.',
@@ -69,15 +71,27 @@ module.exports = {
     '/api/estados': get('Geral', 'Lista de estados (para menus de filtro)'),
     '/api/relatorio': get('Relatório', 'Relatório consolidado por estado', [P.estado, P.inicio, P.fim]),
 
-    '/api/queimadas': get('Queimadas', 'Lista focos de calor (paginado)', [P.estado, P.municipio, P.inicio, P.fim, P.pagina, P.limite]),
+    '/api/queimadas': get('Queimadas', 'Lista focos de calor (paginado)', [P.estado, P.municipio, P.municipio_codigo, P.inicio, P.fim, P.pagina, P.limite]),
     '/api/queimadas/estatisticas': get('Queimadas', 'Estatísticas por estado e por dia', [P.estado, P.municipio, P.inicio, P.fim]),
 
-    '/api/desmatamento': get('Desmatamento', 'Lista alertas de desmatamento (paginado)', [P.estado, P.municipio, P.inicio, P.fim, P.pagina, P.limite]),
+    '/api/desmatamento': get('Desmatamento', 'Lista alertas de desmatamento (paginado)', [P.estado, P.municipio, P.inicio, P.fim, P.pagina, P.limite, P.bbox]),
     '/api/desmatamento/estatisticas': get('Desmatamento', 'Estatísticas por estado e por dia', [P.estado, P.municipio, P.inicio, P.fim]),
 
+    '/api/desmatamento/geojson': get('Desmatamento', 'Alertas de desmatamento em GeoJSON para o mapa (um ponto no centro de cada alerta)', [P.estado, P.municipio, P.inicio, P.fim, P.bbox, q('limite', 'Máximo de pontos (1 a 10000, padrão 5000)')]),
+    '/api/municipios': get('Municípios', 'Municípios da Amazônia Legal: código IBGE, nome, estado, centro e caixa', [P.estado, q('busca', 'Parte do nome, sem diferença de acento ou maiúscula. Ex.: labrea'), q('limite', 'Máximo de itens (1 a 1000)')]),
+    '/api/municipios/geojson': get('Municípios', 'Contornos dos municípios em GeoJSON', [P.estado, q('codigo', 'Código IBGE (7 dígitos)'), P.bbox]),
+    '/api/municipios/{codigo}': {
+      get: {
+        tags: ['Municípios'],
+        summary: 'Um município pelo código IBGE',
+        parameters: [{ name: 'codigo', in: 'path', required: true, schema: { type: 'string' }, description: 'Código IBGE (7 dígitos)' }],
+        responses: { ...R, 404: { description: 'Município não encontrado' } },
+      },
+    },
+    '/api/contornos/estados': get('Municípios', 'Contornos dos estados em GeoJSON (Maranhão inteiro)'),
     '/api/clima': get('Clima', 'Condições climáticas', [P.estado]),
 
-    '/api/queimadas/geojson': get('Queimadas', 'Focos em GeoJSON para o mapa (padr\u00e3o 5.000 pontos, m\u00e1ximo 10.000 com o par\u00e2metro limite)', [q('satelite', 'modis, noaa20 ou suomi'), q('horas', 'Janela em horas (1 a 168, padr\u00e3o 24)'), P.estado, P.municipio, q('bbox', '\u00c1rea vis\u00edvel do mapa: minLon,minLat,maxLon,maxLat (ex.: -70,-10,-60,0)'), q('limite', 'M\u00e1ximo de pontos (1 a 10000, padr\u00e3o 5000)')]),
+    '/api/queimadas/geojson': get('Queimadas', 'Focos em GeoJSON para o mapa (padr\u00e3o 5.000 pontos, m\u00e1ximo 10.000 com o par\u00e2metro limite)', [q('satelite', 'modis, noaa20 ou suomi'), q('horas', 'Janela em horas (1 a 168, padr\u00e3o 24)'), P.estado, P.municipio, P.municipio_codigo, q('bbox', '\u00c1rea vis\u00edvel do mapa: minLon,minLat,maxLon,maxLat (ex.: -70,-10,-60,0)'), q('limite', 'M\u00e1ximo de pontos (1 a 10000, padr\u00e3o 5000)')]),
     '/api/qualidade-ar/geojson': get('Camadas', 'Qualidade do ar e fuma\u00e7a (GeoJSON, leitura mais recente de cada ponto)', [P.estado]),
     '/api/chuvas/geojson': get('Camadas', 'Chuva por hora (GeoJSON)', [q('hora', 'Hora da previs\u00e3o, ex.: 2026-10-20T15:00'), P.estado]),
     '/api/cheias/geojson': get('Camadas', 'Risco de cheia pela vaz\u00e3o dos rios (GeoJSON)', [q('nivel', 'normal, atencao, alto ou extremo (padr\u00e3o: acima do normal)'), P.estado]),

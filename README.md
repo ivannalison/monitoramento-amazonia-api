@@ -102,6 +102,11 @@ Documentação interativa completa em `/api/docs`.
 | GET | `/api/queimadas/geojson` | Focos em GeoJSON para o mapa (filtros `bbox`, `municipio`, `limite`; padrão 5.000 pontos, máximo 10.000) |
 | GET | `/api/desmatamento` | Alertas de desmatamento do INPE DETER (paginado) |
 | GET | `/api/desmatamento/estatisticas` | Área total/média por estado e por dia |
+| GET | `/api/desmatamento/geojson` | Alertas de desmatamento em GeoJSON para o mapa (`bbox`, `estado`, `municipio`, `inicio`, `fim`, `limite`) |
+| GET | `/api/municipios` | Municípios da Amazônia Legal: código IBGE, nome, estado, centro e caixa (`estado`, `busca`, `limite`) |
+| GET | `/api/municipios/:codigo` | Um município pelo código IBGE (7 dígitos) |
+| GET | `/api/municipios/geojson` | Contornos dos municípios (`estado`, `codigo`, `bbox`) |
+| GET | `/api/contornos/estados` | Contornos dos estados (Maranhão inteiro) |
 | GET | `/api/clima` | Condição atual por estado |
 | GET | `/api/qualidade-ar/geojson` | Qualidade do ar (leitura mais recente de cada ponto) |
 | GET | `/api/chuvas/geojson` | Chuva por hora (padrão: hora atual) |
@@ -139,12 +144,27 @@ A coleta de desmatamento leva cerca de 2 minutos, por isso roda **em segundo pla
 
 A resposta sai comprimida (gzip) e as rotas GET trazem `Cache-Control: public, max-age=60`.
 
+### Municípios e contornos
+
+Rotas para o front desenhar o mapa e buscar municípios (dados do IBGE guardados em `src/data`, sem consulta ao banco):
+
+- `GET /api/municipios` lista os municípios da Amazônia Legal com `codigo` (IBGE, 7 dígitos), `nome`, `uf`, `centro` (`[lon, lat]`, meio da caixa) e `bbox`. Filtros: `estado`, `busca` (parte do nome, sem diferença de acento ou maiúscula) e `limite`;
+- `GET /api/municipios/:codigo` devolve um município (400 se o código não tiver 7 dígitos, 404 se não existir);
+- `GET /api/municipios/geojson` devolve os contornos (`estado`, `codigo`, `bbox`); sem filtro vêm todos, cerca de 1 MB antes do gzip;
+- `GET /api/contornos/estados` devolve os contornos dos 9 estados (o Maranhão inteiro);
+- `GET /api/desmatamento/geojson` devolve os alertas do DETER como pontos para o mapa (`bbox`, `estado`, `municipio`, `inicio`, `fim`, `limite`). O `bbox` também vale em `/api/desmatamento` e `/api/desmatamento/estatisticas`.
+
+Essas rotas de municípios e contornos trazem `Cache-Control: public, max-age=3600`, porque os dados quase não mudam. Nas queimadas, `?municipio=labrea` ignora acento e `?municipio_codigo=1302603` filtra pelo código IBGE.
+
 ### Filtros e parâmetros
 
 | Parâmetro | Vale em | Exemplo |
 |---|---|---|
 | `estado` (sigla ou nome) | queimadas, desmatamento, estatísticas, relatório, alertas, clima, camadas | `?estado=AM` ou `?estado=Amazonas` |
-| `municipio` | queimadas (lista, estatísticas e geojson) e desmatamento | `?municipio=Lábrea` (nome com acento, como o IBGE escreve) |
+| `municipio` | queimadas (lista, estatísticas e geojson) e desmatamento | `?municipio=Lábrea` (ignora acento e maiúsculas: `?municipio=labrea` também acha) |
+| `municipio_codigo` | queimadas (lista, estatísticas e geojson) | `?municipio_codigo=1302603` |
+| `bbox` (minLon,minLat,maxLon,maxLat) | `/desmatamento`, `/desmatamento/estatisticas`, `/desmatamento/geojson`, `/municipios/geojson` | `?bbox=-65,-9,-63,-7` |
+| `busca` | `/municipios` | `?busca=labrea` |
 | `inicio`, `fim` (AAAA-MM-DD) | queimadas, desmatamento, estatísticas, relatório | `?inicio=2026-09-01&fim=2026-09-30` |
 | `pagina`, `limite` (máx. 200) | listas de queimadas e desmatamento | `?pagina=1&limite=10` |
 | `satelite` (modis, noaa20, suomi) | `/queimadas/geojson` | `?satelite=noaa20` |
@@ -275,7 +295,7 @@ Para usar outra porta no seu computador: `HOST_PORT=3001` (PowerShell: `$env:HOS
 npm test
 ```
 
-Os testes ficam em `tests/api.test.js` (API) e `tests/melhorias-fase1.test.js` (gzip, cache, CORS, bbox, municípios e Amazônia Legal), 24 testes ao todo. Eles usam o banco real (`MONGODB_URI` no `.env`).
+Os testes ficam em `tests/api.test.js` (API) e `tests/melhorias-fase1.test.js` (gzip, cache, CORS, bbox, municípios e Amazônia Legal) e `tests/fase1-5.test.js` (municípios, contornos, bbox no desmatamento e filtros sem acento). Eles usam o banco real (`MONGODB_URI` no `.env`).
 
 **Teste de ponta a ponta:** o projeto também foi validado com testes em PowerShell contra dados reais. Eles conferem:
 
@@ -299,7 +319,7 @@ src/
   services/                  queimada, desmatamento, clima, alerta, estado, resumo, relatorio,
                              camadasResumo, coleta
   controllers/               status, resumo, estado, relatorio, queimada, desmatamento, clima,
-                             alerta, camadas, resumoCamadas, coleta
+                             alerta, camadas, resumoCamadas, coleta, municipio
   middlewares/               chaveApi.js, coletaSegundoPlano.js, cacheMemoria.js, erros.js
   routes/index.js            mapa de rotas
   utils/                     asyncHandler, estados, filtros, periodo, resposta, geo, bbox, municipios
@@ -314,7 +334,7 @@ Dockerfile, docker-compose.yml, .dockerignore
 
 ## ⚠️ Limitações conhecidas
 
-- O FIRMS não informa município: a API descobre o município cruzando a posição de cada foco com a malha municipal do IBGE. Focos em divisas podem cair no município vizinho porque a malha é simplificada. O filtro `?municipio=` compara o nome com acento.
+- O FIRMS não informa município: a API descobre o município cruzando a posição de cada foco com a malha municipal do IBGE. Focos em divisas podem cair no município vizinho porque a malha é simplificada. O filtro `?municipio=` ignora acento e maiúsculas, e `?municipio_codigo=` filtra pelo código IBGE.
 - `focos_de_calor` em `/api/resumo` é o total guardado no banco (janela de 7 dias); os focos das últimas 24 h estão em `camadas.queimadas`.
 - No Maranhão entram só os municípios da Amazônia Legal (os que têm alguma parte a oeste do meridiano 44°W), o que inclui áreas de Cerrado. Para "só bioma Amazônia" seria preciso usar a malha de biomas do IBGE.
 - O risco de cheia é uma estimativa simples (vazão de hoje contra a média de 30 dias do próprio modelo GloFAS), não um alerta oficial.
@@ -334,6 +354,7 @@ Dockerfile, docker-compose.yml, .dockerignore
 - [x] Gzip, cache curto e CORS só de leitura
 - [x] Filtro por área visível (`bbox`) e por município no GeoJSON de queimadas
 - [x] Município nas queimadas (malha do IBGE)
+- [x] Fase 1.5: rotas de municípios e contornos, `bbox` no desmatamento e filtro de município sem acento ou por código IBGE
 
 ## 👤 Autor
 
