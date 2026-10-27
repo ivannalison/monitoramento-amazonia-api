@@ -12,4 +12,5 @@ const schema = new mongoose.Schema(
   { versionKey: false, collection: 'coletas' }
 );
 schema.index({ inicio: 1 }, { expireAfterSeconds: 30 * 24 * 3600 });
+schema.index({ fonte: 1, inicio: -1 });
 module.exports = mongoose.models.Coleta || mongoose.model('Coleta', schema);

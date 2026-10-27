@@ -13,11 +13,12 @@ const coleta = require('../controllers/coletaController');
 const camadas = require('../controllers/camadasController');
 const resumoCamadas = require('../controllers/resumoCamadasController');
 
+const cache = require('../middlewares/cacheMemoria');
 const router = Router();
 
 router.get('/status', status.status);
 router.get('/amazonia', status.amazonia);
-router.get('/resumo', resumo.obter);
+router.get('/resumo', cache(30000), resumo.obter);
 router.get('/estados', estados.listar);
 router.get('/relatorio', relatorio.obter);                     // ?estado= &inicio= &fim=
 
@@ -40,8 +41,8 @@ router.delete('/alertas/:id', exigirChave, alertas.remover);
 router.get('/qualidade-ar/geojson', camadas.ar);
 router.get('/chuvas/geojson', camadas.chuva);          // ?hora=
 router.get('/cheias/geojson', camadas.cheia);
-router.get('/fontes', camadas.fontes);
-router.get('/camadas/resumo', resumoCamadas.obter);       // ?estado= &horas=
+router.get('/fontes', cache(30000), camadas.fontes);
+router.get('/camadas/resumo', cache(30000), resumoCamadas.obter);       // ?estado= &horas=
 
 // NOVO: dispara a coleta de uma fonte (protegida pela chave)
 router.post('/coleta/:fonte', exigirChave, coleta.executar);

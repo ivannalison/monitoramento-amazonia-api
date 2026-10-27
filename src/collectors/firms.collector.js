@@ -4,6 +4,7 @@
 const { parse } = require('csv-parse/sync');
 const Queimada = require('../models/Queimada');
 const { estadoDoPonto } = require('../utils/geo');
+const { municipioDoPonto } = require('../utils/municipios');
 
 const BASE = 'https://firms.modaps.eosdis.nasa.gov/data/active_fire';
 const FONTES = {
@@ -23,7 +24,8 @@ async function coletarSatelite(satelite) {
     const lat = parseFloat(l.latitude);
     const lon = parseFloat(l.longitude);
     const estado = estadoDoPonto(lon, lat);
-    if (!estado) continue; // fora da Amazônia Legal
+    if (!estado) continue;
+    const mun = municipioDoPonto(lon, lat); // fora da Amazônia Legal
 
     const hhmm = String(l.acq_time).padStart(4, '0');
     const hora = `${hhmm.slice(0, 2)}:${hhmm.slice(2)}`;
@@ -32,6 +34,8 @@ async function coletarSatelite(satelite) {
       latitude: lat, longitude: lon, data, hora, satelite, estado,
       intensidade: parseFloat(l.frp) || 0,
       confianca: String(l.confidence),
+      ...(mun ? { municipio: mun.nome } : {}),
+      municipio_codigo: mun ? mun.codigo : null,
       diaNoite: l.daynight,
       fonte: 'NASA FIRMS',
       ultima_atualizacao: agora,

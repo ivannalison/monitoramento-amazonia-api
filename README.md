@@ -60,7 +60,7 @@ Open-Meteo é gratuito para uso não comercial. As camadas de ar, chuva, cheia e
 
 ## 🛠️ Tecnologias
 
-Node.js 22, Express 5, MongoDB Atlas, Mongoose, Swagger/OpenAPI, helmet, express-rate-limit, node-cron, Jest e Supertest, Docker e Docker Compose, Git e GitHub.
+Node.js 22, Express 5, MongoDB Atlas, Mongoose, Swagger/OpenAPI, helmet, compression (gzip), express-rate-limit, node-cron, Jest e Supertest, Docker e Docker Compose, Git e GitHub.
 
 ## 🗺️ Padrão de estados
 
@@ -75,6 +75,8 @@ O campo `estado` é sempre a sigla (AC, AM, AP, MA, MT, PA, RO, RR, TO). Nos fil
   - Com `API_KEY` definida: exige o header correto (senão, erro 401).
 - **Limites por IP:** 1000 requisições a cada 15 minutos em `/api` e 30 por hora em `/api/coleta`.
 - **Cabeçalhos de segurança:** helmet.
+- **CORS:** só leitura (`GET`, `HEAD`, `OPTIONS`) e só para as origens de `CORS_ORIGIN`. O site é somente de leitura e nunca recebe a chave de API.
+- **Atrás de proxy (Cloud Run):** `TRUST_PROXY` (padrão `1` em produção) faz o limite por IP usar o IP real de cada visitante.
 
 ## 📋 Endpoints
 
@@ -97,7 +99,7 @@ Documentação interativa completa em `/api/docs`.
 |---|---|---|
 | GET | `/api/queimadas` | Focos de calor (paginado) |
 | GET | `/api/queimadas/estatisticas` | Totais e intensidade por estado e por dia |
-| GET | `/api/queimadas/geojson` | Focos em GeoJSON para o mapa (máx. 5.000 pontos) |
+| GET | `/api/queimadas/geojson` | Focos em GeoJSON para o mapa (filtros `bbox`, `municipio`, `limite`; padrão 5.000 pontos, máximo 10.000) |
 | GET | `/api/desmatamento` | Alertas de desmatamento do INPE DETER (paginado) |
 | GET | `/api/desmatamento/estatisticas` | Área total/média por estado e por dia |
 | GET | `/api/clima` | Condição atual por estado |
@@ -126,15 +128,28 @@ Campos de um alerta: `tipo` (obrigatório), `nivel` (obrigatório: baixo, modera
 
 A coleta de desmatamento leva cerca de 2 minutos, por isso roda **em segundo plano**: a rota responde `202` imediatamente e a coleta continua. Se outra chamada chegar enquanto ela ainda roda, a resposta é `409`. Para esperar o fim da coleta (comportamento síncrono), use `?aguardar=true`.
 
+### Mapa com zoom até o município
+
+`GET /api/queimadas/geojson` foi pensado para um mapa que carrega só o que aparece na tela:
+
+- `bbox=minLon,minLat,maxLon,maxLat` devolve só os focos dentro da área visível (ao mexer ou dar zoom, o front pede de novo com o novo `bbox`);
+- `municipio=Lábrea` devolve só os focos daquele município (773 municípios da Amazônia Legal, malha do IBGE);
+- `limite` (padrão 5000, máximo 10000) controla quantos pontos vêm. A resposta traz `limite` e `truncado` (`true` quando o corte foi atingido, e o front deve avisar que está mostrando os pontos mais intensos);
+- `bbox` inválido devolve 400.
+
+A resposta sai comprimida (gzip) e as rotas GET trazem `Cache-Control: public, max-age=60`.
+
 ### Filtros e parâmetros
 
 | Parâmetro | Vale em | Exemplo |
 |---|---|---|
 | `estado` (sigla ou nome) | queimadas, desmatamento, estatísticas, relatório, alertas, clima, camadas | `?estado=AM` ou `?estado=Amazonas` |
-| `municipio` | queimadas e desmatamento (e estatísticas) | `?municipio=Lábrea` |
+| `municipio` | queimadas (lista, estatísticas e geojson) e desmatamento | `?municipio=Lábrea` (nome com acento, como o IBGE escreve) |
 | `inicio`, `fim` (AAAA-MM-DD) | queimadas, desmatamento, estatísticas, relatório | `?inicio=2026-09-01&fim=2026-09-30` |
 | `pagina`, `limite` (máx. 200) | listas de queimadas e desmatamento | `?pagina=1&limite=10` |
 | `satelite` (modis, noaa20, suomi) | `/queimadas/geojson` | `?satelite=noaa20` |
+| `bbox` (minLon,minLat,maxLon,maxLat) | `/queimadas/geojson` | `?bbox=-65,-9,-63,-7` |
+| `limite` (1 a 10000, padrão 5000) | `/queimadas/geojson` | `?limite=2000` |
 | `horas` (1 a 168, padrão 24) | `/queimadas/geojson`, `/camadas/resumo`, `/relatorio` | `?horas=48` |
 | `hora` (AAAA-MM-DDTHH:00, UTC) | `/chuvas/geojson` | `?hora=2026-10-20T15:00` |
 | `nivel` (normal, atencao, alto, extremo) | `/cheias/geojson` | `?nivel=alto` |
@@ -200,6 +215,8 @@ AGENDAR=true
 | `API_KEY` | Chave para POST/PUT/DELETE (header `x-api-key`) |
 | `CORS_ORIGIN` | Origens permitidas, separadas por vírgula (endereço do front-end) |
 | `AGENDAR` | `true` = a API coleta sozinha (node-cron). `false` = coleta só pela rota `POST /api/coleta/:fonte` |
+| `TRUST_PROXY` | Quantos proxies existem na frente da API (`1` no Cloud Run). Padrão: `1` em produção e `0` local |
+| `NODE_ENV` | `production` liga o `trust proxy` e bloqueia a escrita se faltar `API_KEY` |
 
 ⚠️ **Nunca suba o `.env` para o GitHub** (ele já está no `.gitignore`).
 
@@ -227,6 +244,8 @@ foreach ($f in 'firms','desmatamento','clima','ar','chuva','cheia') {
 ```
 
 > O Open-Meteo tem cota diária: evite rodar as coletas completas mais de uma vez por dia.
+
+**Municípios:** a malha municipal já vem no repositório (`src/data/municipios-amazonia-legal.json`). Para gerá-la de novo: `node scripts/baixar-municipios.js`. Para preencher o município de focos antigos: `node scripts/preencher-municipios.js` (também apaga focos do Maranhão fora da Amazônia Legal).
 
 ### Agendamento (UTC)
 
@@ -256,7 +275,7 @@ Para usar outra porta no seu computador: `HOST_PORT=3001` (PowerShell: `$env:HOS
 npm test
 ```
 
-Os testes ficam em `tests/api.test.js`.
+Os testes ficam em `tests/api.test.js` (API) e `tests/melhorias-fase1.test.js` (gzip, cache, CORS, bbox, municípios e Amazônia Legal), 24 testes ao todo. Eles usam o banco real (`MONGODB_URI` no `.env`).
 
 **Teste de ponta a ponta:** o projeto também foi validado com testes em PowerShell contra dados reais. Eles conferem:
 
@@ -281,32 +300,40 @@ src/
                              camadasResumo, coleta
   controllers/               status, resumo, estado, relatorio, queimada, desmatamento, clima,
                              alerta, camadas, resumoCamadas, coleta
-  middlewares/               chaveApi.js, coletaSegundoPlano.js, erros.js
+  middlewares/               chaveApi.js, coletaSegundoPlano.js, cacheMemoria.js, erros.js
   routes/index.js            mapa de rotas
-  utils/                     asyncHandler, estados, filtros, periodo, resposta, geo
+  utils/                     asyncHandler, estados, filtros, periodo, resposta, geo, bbox, municipios
   data/estados.geojson       contornos dos estados (IBGE)
+  data/municipios-amazonia-legal.json  malha de 773 municípios (IBGE)
 tests/api.test.js            testes automatizados (Jest + Supertest)
+tests/melhorias-fase1.test.js  testes da Fase 1 (gzip, cache, CORS, bbox, municípios)
+scripts/                     baixar-municipios.js, preencher-municipios.js
+docs/                        relatório e escopo do front-end
 Dockerfile, docker-compose.yml, .dockerignore
 ```
 
 ## ⚠️ Limitações conhecidas
 
-- O FIRMS não informa município; o campo `municipio` das queimadas fica vazio.
+- O FIRMS não informa município: a API descobre o município cruzando a posição de cada foco com a malha municipal do IBGE. Focos em divisas podem cair no município vizinho porque a malha é simplificada. O filtro `?municipio=` compara o nome com acento.
 - `focos_de_calor` em `/api/resumo` é o total guardado no banco (janela de 7 dias); os focos das últimas 24 h estão em `camadas.queimadas`.
-- O Maranhão entra inteiro nos contornos (não só a parte da Amazônia Legal).
+- No Maranhão entram só os municípios da Amazônia Legal (os que têm alguma parte a oeste do meridiano 44°W), o que inclui áreas de Cerrado. Para "só bioma Amazônia" seria preciso usar a malha de biomas do IBGE.
 - O risco de cheia é uma estimativa simples (vazão de hoje contra a média de 30 dias do próprio modelo GloFAS), não um alerta oficial.
 - O clima de cada estado é a média dos pontos da grade, não uma estação meteorológica.
 - Para uso em produção com muito tráfego, confira os termos de uso do Open-Meteo (uso não comercial).
+- O cache em memória (30 s em `/api/resumo`, `/api/fontes` e `/api/camadas/resumo`) é por instância: no Cloud Run, cada instância tem o seu.
 - O banco usa o plano gratuito do Atlas (512 MB). O crescimento é limitado pela retenção dos dados (queimadas e chuva por 7 dias, desmatamento por 365 dias).
 
 ## 🗺️ Roadmap
 
-- [ ] Front-end em Angular consumindo esta API (repositório separado)
+- [ ] Front-end GUARDA em Angular + MapLibre GL, somente leitura, consumindo esta API (repositório separado; escopo em `docs/escopo-frontend.md`)
 - [ ] Publicação em container no Google Cloud (Cloud Run) com Cloud Scheduler para as coletas. Para o DETER em segundo plano, usar "CPU sempre alocada" ou um Cloud Run Job
 - [ ] Ampliar a cobertura dos testes automatizados (Jest + Supertest)
-- [ ] Refinar o contorno do Maranhão (apenas Amazônia Legal)
+- [x] Maranhão só com os municípios da Amazônia Legal
 - [x] Reconexão automática ao Atlas
 - [x] Coleta do DETER em segundo plano
+- [x] Gzip, cache curto e CORS só de leitura
+- [x] Filtro por área visível (`bbox`) e por município no GeoJSON de queimadas
+- [x] Município nas queimadas (malha do IBGE)
 
 ## 👤 Autor
 

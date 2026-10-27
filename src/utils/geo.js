@@ -39,11 +39,19 @@ const lista = estados.features.map((f) => {
 });
 
 // Retorna a sigla (ex.: 'AM') ou null se estiver fora da Amazônia Legal
+// Maranhao: so entram os municipios da Amazonia Legal (IBGE). Sem o arquivo de municipios, usa o meridiano 44 W.
+function dentroDaAmazoniaLegal(sigla, lon, lat) {
+  if (sigla !== 'MA') return true;
+  const municipios = require('./municipios');
+  if (municipios.disponivel()) return municipios.municipioDoPonto(lon, lat) !== null;
+  return lon < -44;
+}
+
 function estadoDoPonto(lon, lat) {
   for (const e of lista) {
     const [minX, minY, maxX, maxY] = e.bbox;
     if (lon < minX || lon > maxX || lat < minY || lat > maxY) continue;
-    if (e.polys.some((p) => dentroDoPoligono(lon, lat, p))) return e.sigla;
+    if (e.polys.some((p) => dentroDoPoligono(lon, lat, p))) return dentroDaAmazoniaLegal(e.sigla, lon, lat) ? e.sigla : null;
   }
   return null;
 }

@@ -1,4 +1,4 @@
-// ARQUIVO 20 → src/controllers/camadasController.js
+// src/controllers/camadasController.js
 const asyncHandler = require('../utils/asyncHandler');
 const QualidadeAr = require('../models/QualidadeAr');
 const Chuva = require('../models/Chuva');
@@ -30,7 +30,7 @@ exports.ar = asyncHandler(async (req, res) => {
   res.json(colecao(feats, { fonte: 'Open-Meteo Air Quality', ultima_atualizacao: docs[0]?.d.data || null }));
 });
 
-// GET /api/chuvas/geojson?hora=2026-10-19T15:00  (sem "hora": a hora cheia mais próxima de agora)
+// GET /api/chuvas/geojson?hora=2026-10-19T15:00  (sem "hora": a hora cheia mais proxima de agora)
 exports.chuva = asyncHandler(async (req, res) => {
   let hora = req.query.hora ? new Date(req.query.hora.length === 16 ? `${req.query.hora}:00Z` : req.query.hora) : new Date();
   if (isNaN(hora)) return res.status(400).json({ erro: 'Parametro hora invalido (use 2026-10-19T15:00)' });
@@ -42,7 +42,7 @@ exports.chuva = asyncHandler(async (req, res) => {
   res.json(colecao(feats, { fonte: 'Open-Meteo Forecast', hora, ultima_atualizacao: docs[0]?.coletado_em || null }));
 });
 
-// GET /api/cheias/geojson?estado=PA&nivel=atencao  (por padrão só rios acima do normal)
+// GET /api/cheias/geojson?estado=PA&nivel=atencao  (por padrao so rios acima do normal)
 exports.cheia = asyncHandler(async (req, res) => {
   const filtro = { ...filtroEstado(req.query) };
   filtro.nivel = ['normal', 'atencao', 'alto', 'extremo'].includes(req.query.nivel)
@@ -60,23 +60,27 @@ exports.cheia = asyncHandler(async (req, res) => {
   res.json(colecao(feats, { fonte: 'Open-Meteo Flood (GloFAS)', ultima_atualizacao: docs[0]?.d.data || null }));
 });
 
-// GET /api/fontes  (fonte, última coleta e situação)
+// GET /api/fontes  (fonte, ultima coleta e situacao) - consultas em paralelo
 exports.fontes = asyncHandler(async (req, res) => {
   const nomes = {
     firms: 'NASA FIRMS (queimadas)', ar: 'Open-Meteo Air Quality', chuva: 'Open-Meteo Forecast',
     cheia: 'Open-Meteo Flood', desmatamento: 'INPE DETER (desmatamento)', clima: 'Open-Meteo Forecast (clima)',
   };
-  const lista = [];
-  for (const [id, nome] of Object.entries(nomes)) {
-    const ultima = await Coleta.findOne({ fonte: id }).sort({ inicio: -1 }).lean();
-    const ultimaOk = await Coleta.findOne({ fonte: id, status: 'ok' }).sort({ inicio: -1 }).lean();
-    lista.push({
-      id, nome,
-      ultima_coleta: ultima?.fim || null,
-      ultima_coleta_ok: ultimaOk?.fim || null,
-      situacao: ultima ? ultima.status : 'sem coleta',
-      erro: ultima?.status === 'erro' ? ultima.erro : undefined,
-    });
-  }
-  res.json({ fontes: lista, total_focos: await Queimada.countDocuments({ satelite: { $exists: true } }) });
+  const [lista, totalFocos] = await Promise.all([
+    Promise.all(Object.entries(nomes).map(async ([id, nome]) => {
+      const [ultima, ultimaOk] = await Promise.all([
+        Coleta.findOne({ fonte: id }).sort({ inicio: -1 }).lean(),
+        Coleta.findOne({ fonte: id, status: 'ok' }).sort({ inicio: -1 }).lean(),
+      ]);
+      return {
+        id, nome,
+        ultima_coleta: ultima?.fim || null,
+        ultima_coleta_ok: ultimaOk?.fim || null,
+        situacao: ultima ? ultima.status : 'sem coleta',
+        erro: ultima?.status === 'erro' ? ultima.erro : undefined,
+      };
+    })),
+    Queimada.countDocuments({ satelite: { $exists: true } }),
+  ]);
+  res.json({ fontes: lista, total_focos: totalFocos });
 });

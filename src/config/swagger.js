@@ -53,7 +53,7 @@ module.exports = {
   openapi: '3.0.0',
   info: {
     title: 'Monitoramento da Amazônia API',
-    version: '2.0.0',
+    version: '2.1.0',
     description:
       'API REST que organiza indicadores ambientais da Amazônia. Todos os dados v\u00eam de fontes p\u00fablicas reais: NASA FIRMS (queimadas), INPE DETER (desmatamento) e Open-Meteo (ar, chuva, cheias e clima). Veja o campo "fonte" de cada resposta. ' +
       'Rotas que alteram dados (POST/PUT/DELETE) usam o header x-api-key quando API_KEY está configurada.',
@@ -77,7 +77,7 @@ module.exports = {
 
     '/api/clima': get('Clima', 'Condições climáticas', [P.estado]),
 
-    '/api/queimadas/geojson': get('Queimadas', 'Focos em GeoJSON para o mapa (m\u00e1ximo 5.000 pontos)', [q('satelite', 'modis, noaa20 ou suomi'), q('horas', 'Janela em horas (1 a 168, padr\u00e3o 24)'), P.estado]),
+    '/api/queimadas/geojson': get('Queimadas', 'Focos em GeoJSON para o mapa (padr\u00e3o 5.000 pontos, m\u00e1ximo 10.000 com o par\u00e2metro limite)', [q('satelite', 'modis, noaa20 ou suomi'), q('horas', 'Janela em horas (1 a 168, padr\u00e3o 24)'), P.estado, P.municipio, q('bbox', '\u00c1rea vis\u00edvel do mapa: minLon,minLat,maxLon,maxLat (ex.: -70,-10,-60,0)'), q('limite', 'M\u00e1ximo de pontos (1 a 10000, padr\u00e3o 5000)')]),
     '/api/qualidade-ar/geojson': get('Camadas', 'Qualidade do ar e fuma\u00e7a (GeoJSON, leitura mais recente de cada ponto)', [P.estado]),
     '/api/chuvas/geojson': get('Camadas', 'Chuva por hora (GeoJSON)', [q('hora', 'Hora da previs\u00e3o, ex.: 2026-10-20T15:00'), P.estado]),
     '/api/cheias/geojson': get('Camadas', 'Risco de cheia pela vaz\u00e3o dos rios (GeoJSON)', [q('nivel', 'normal, atencao, alto ou extremo (padr\u00e3o: acima do normal)'), P.estado]),

@@ -21,6 +21,7 @@ const desmatamentoSchema = new mongoose.Schema(
 
 desmatamentoSchema.index({ id_externo: 1 }, { unique: true, partialFilterExpression: { id_externo: { $type: 'string' } } });
 desmatamentoSchema.index({ estado: 1, data: -1 });
+desmatamentoSchema.index({ ultima_atualizacao: -1 });
 desmatamentoSchema.index({ data: 1 }, { expireAfterSeconds: 365 * 24 * 3600 });
 
 module.exports = mongoose.models.Desmatamento || mongoose.model('Desmatamento', desmatamentoSchema);

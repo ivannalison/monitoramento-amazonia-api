@@ -7,7 +7,8 @@ const queimadaSchema = new mongoose.Schema(
     data: { type: Date, required: true },          // data+hora da passagem do satelite (UTC)
     hora: { type: String },                        // 'HH:MM'
     estado: { type: String, required: true, trim: true, set: normalizarUF },
-    municipio: { type: String, trim: true },       // o FIRMS nao informa; fica vazio
+    municipio: { type: String, trim: true },       // preenchido cruzando com a malha do IBGE
+    municipio_codigo: { type: String },            // codigo IBGE; null = fora dos municipios; ausente = ainda nao processado
     latitude: Number,
     longitude: Number,
     satelite: { type: String, enum: ['modis', 'noaa20', 'suomi'] },
@@ -28,6 +29,8 @@ const queimadaSchema = new mongoose.Schema(
 queimadaSchema.index({ latitude: 1, longitude: 1, data: 1, satelite: 1 }, { unique: true });
 queimadaSchema.index({ location: '2dsphere' });
 queimadaSchema.index({ estado: 1, data: -1 });
+queimadaSchema.index({ municipio: 1, data: -1 });
+queimadaSchema.index({ ultima_atualizacao: -1 });
 // Apaga sozinho apos 7 dias (cabe no plano gratuito do Atlas)
 queimadaSchema.index({ data: 1 }, { expireAfterSeconds: 7 * 24 * 3600 });
 
