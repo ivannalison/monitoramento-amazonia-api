@@ -8,3 +8,5 @@ Dockerfile
 docker-compose.yml
 *.md
 npm-debug.log
+# O site tem a sua propria imagem
+guarda-web
