@@ -20,10 +20,3 @@ Thumbs.db
 
 # Cobertura de testes
 coverage/
-
-# Site (Angular) e arquivos de desenvolvimento
-dist/
-.angular/
-out-tsc/
-guarda-notas/
-*.antigo/
